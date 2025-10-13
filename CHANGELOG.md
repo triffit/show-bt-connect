@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented here.
 
+## [1.2.2] - 2025-10-13
+### Added
+- (none yet)
+
+### Changed
+- Version bump only (no functional changes since 1.1.6).
+
+### Removed
+- (none)
+
+### Internal
+- Updated crate and resource versions to 1.2.2 / 1.2.2.0.
+
 ## [1.1.6] - 2025-10-13
 ### Added
 - About dialog displaying version and restored Win+K behavior.
