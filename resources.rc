@@ -1,8 +1,12 @@
 #include <windows.h>
 
+// NOTE: This file now acts as a template. Build script replaces the
+// placeholders {{FILE_VERSION_COMMAS}} and {{FILE_VERSION_DOTS}} with the
+// current Cargo package version (fourth component forced to 0).
+// Do not manually edit versions here; change Cargo.toml version instead.
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1,2,4,0
-PRODUCTVERSION  1,2,4,0
+FILEVERSION     {{FILE_VERSION_COMMAS}}
+PRODUCTVERSION  {{FILE_VERSION_COMMAS}}
 FILEFLAGSMASK   0x3fL
 FILEFLAGS       0x0L
 FILEOS          VOS__WINDOWS32
@@ -15,12 +19,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Triffit"
             VALUE "FileDescription", "Restore Win+K: Bluetooth Devices Panel"
-            VALUE "FileVersion", "1.2.4.0"
+            VALUE "FileVersion", "{{FILE_VERSION_DOTS}}"
             VALUE "InternalName", "restore-wink-bt"
             VALUE "LegalCopyright", "Copyright (c) 2025, Triffit"
             VALUE "OriginalFilename", "restore-wink-bt.exe"
             VALUE "ProductName", "Restore Win+K: Bluetooth Devices Panel"
-            VALUE "ProductVersion", "1.2.4.0"
+            VALUE "ProductVersion", "{{FILE_VERSION_DOTS}}"
             VALUE "Authors", "jopl@Triffit"
         END
     END

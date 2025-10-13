@@ -9,7 +9,18 @@ fn main() {
         println!("cargo:rustc-env=APP_VERSION={ver}");
     }
     if cfg!(target_os = "windows") {
-        embed_resource::compile("resources.rc", embed_resource::NONE);
+        let pkg_ver = std::env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| "0.0.0".into());
+        let (file_commas, file_dots) = windows_version_components(&pkg_ver);
+        let template = fs::read_to_string("resources.rc").expect("read resources.rc template");
+        let processed = template
+            .replace("{{FILE_VERSION_COMMAS}}", &file_commas)
+            .replace("{{FILE_VERSION_DOTS}}", &file_dots);
+        let out_dir = std::env::var("OUT_DIR").unwrap();
+        let rc_path = Path::new(&out_dir).join("auto_resources.rc");
+        fs::write(&rc_path, processed).expect("write auto_resources.rc");
+        println!("cargo:rerun-if-changed=resources.rc");
+        println!("cargo:rerun-if-changed=app.ico");
+    embed_resource::compile(&rc_path, embed_resource::NONE);
     }
 
     // Generate icon RGBA at build time from app.ico for accurate tray display
@@ -21,6 +32,20 @@ fn main() {
             eprintln!("cargo:warning=Failed to generate icon from app.ico: {e}");
         }
     }
+}
+
+fn windows_version_components(pkg_ver: &str) -> (String, String) {
+    // Strip any pre-release / build metadata
+    let core = pkg_ver.split(['-', '+']).next().unwrap_or(pkg_ver);
+    let mut nums: Vec<u16> = core.split('.')
+        .filter_map(|p| p.parse::<u16>().ok())
+        .collect();
+    while nums.len() < 3 { nums.push(0); }
+    if nums.len() > 3 { nums.truncate(3); }
+    nums.push(0); // fourth component forced to 0
+    let commas = format!("{},{},{},{}", nums[0], nums[1], nums[2], nums[3]);
+    let dots = format!("{}.{}.{}.{}", nums[0], nums[1], nums[2], nums[3]);
+    (commas, dots)
 }
 
 fn generate_icon_rs(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
