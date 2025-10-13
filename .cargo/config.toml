@@ -2,7 +2,12 @@
 target = "x86_64-pc-windows-msvc"
 
 [profile.release]
-# Optimize for size; 'z' is more aggressive than 's'
+# Size-focused defaults:
+# - opt-level="z" : maximum size optimization
+# - lto="thin"     : good size/time tradeoff (can switch to "fat" for slightly smaller, slower build)
+# - codegen-units=1 : enables better cross-module optimization
+# - panic="abort"   : removes unwinding tables
+# - strip = true     : enable built-in stripping (stable since Rust 1.73)
 opt-level = "z"
 lto = "thin"
 codegen-units = 1
@@ -15,8 +20,8 @@ strip = true
 
 [target.x86_64-pc-windows-msvc]
 rustflags = [
-  "-C", "link-arg=/OPT:REF",
-  "-C", "link-arg=/OPT:ICF",
-  "-C", "link-arg=/DEBUG:NONE",
-  "-C", "link-arg=/INCREMENTAL:NO",
+  "-C", "link-arg=/OPT:REF",   # Remove unreferenced functions/data
+  "-C", "link-arg=/OPT:ICF",   # Fold identical COMDAT sections
+  "-C", "link-arg=/DEBUG:NONE",# Ensure no PDB path emitted (final exe smaller)
+  "-C", "link-arg=/INCREMENTAL:NO", # Avoid incremental artifacts influencing size
 ]

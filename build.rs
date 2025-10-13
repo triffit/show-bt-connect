@@ -4,6 +4,10 @@ use std::fs;
 use std::path::Path;
 
 fn main() {
+    // Expose version info to code for dynamic tooltip / logging
+    if let Ok(ver) = std::env::var("CARGO_PKG_VERSION") {
+        println!("cargo:rustc-env=APP_VERSION={ver}");
+    }
     if cfg!(target_os = "windows") {
         embed_resource::compile("resources.rc", embed_resource::NONE);
     }

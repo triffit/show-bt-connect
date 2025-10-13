@@ -42,6 +42,9 @@ Key Features
 - Accurate Win+K emulation: first chord Bluetooth, second chord Cast (pass‑through window ~1.2s)
 - About dialog (tray menu) with version pulled from build metadata
 - Graceful keyboard hook shutdown (unhook on Exit)
+ - RAII keyboard hook guard (auto-unhook on drop – no manual shutdown path needed)
+ - Failure-only logging always active; success logging opt-in via `--features verbose-log`
+ - `#![deny(warnings)]` enforced for consistently clean builds
 
 Removed / Simplified (Historical)
 ---------------------------------
@@ -56,6 +59,21 @@ Build
 cargo build --release
 ```
 Artifacts (with explicit target in `.cargo/config.toml`):
+Verbose Logging (Release)
+------------------------
+Enable extra diagnostic output (including successful URI launches):
+```
+cargo build --release --features verbose-log
+```
+Without the feature, only failures (ShellExecute codes <= 32, mutex failure) log.
+
+Runtime Usage
+-------------
+1. Launch the exe (console hidden in non-debug builds).
+2. Press Win+K or left-click tray icon to show Bluetooth devices.
+3. Hold Win and press K again quickly for Cast (pass-through).
+4. Right-click tray icon for About / Exit.
+
 ```
 target/x86_64-pc-windows-msvc/release/restore-wink-bt.exe
 ```
@@ -86,13 +104,74 @@ Future Ideas
 - Optional bring-to-front / focus behavior if a second launch attempted.
 - Add code signing & release automation (GitHub Actions workflow + hash announce).
 - Optional logging toggle for diagnostics.
+ - Windows `windows-sys` crate migration to trim `winapi` surface.
+ - CI automation (GitHub Actions: build + release artifact + hash publish).
+ - Integration tests for mutex single-instance behavior.
 - Alternative fallback if Microsoft changes the URI schemes.
 - Optional balloon / tooltip feedback on launch failure detection (placeholder logic prepared).
 
 Development Overview
 --------------------
-Minimal dependency set: `winit`, `tray-icon`, `winapi`, `once_cell` plus build-time `ico` & `embed-resource`.
+Minimal dependency set: `winit`, `tray-icon`, `windows-sys` (curated Win32 feature list), `once_cell` plus build-time `ico` & `embed-resource`.
+
+Wide UTF-16 Helpers
+-------------------
+The module `src/wide_strings.rs` provides two tiny helpers:
+
+- `to_wide(s: &str) -> Vec<u16>`: UTF-16 encode without a terminating null.
+- `to_wide_null(s: &str) -> Vec<u16>`: UTF-16 encode and append a trailing `\0` (for most Win32 APIs).
+
+These replace repeated `OsStr::new(...).encode_wide().chain(once(0))` patterns across mutex creation, window class registration, message box titles, ShellExecuteW calls, etc., improving readability and reducing minor copy/paste risk. No external crate is pulled in for this to keep the binary minimal.
 
 License
 -------
 MIT License (see `LICENSE`).
+
+Release Checklist
+-----------------
+1. Update `CHANGELOG.md` with version + notable changes.
+2. Set `APP_VERSION` via build script env (or tag) and build release:
+	- `cargo clean && cargo build --release`
+3. Verify size & hash:
+	- Check file size (<300 KB expected)
+	- `Get-FileHash target/x86_64-pc-windows-msvc/release/restore-wink-bt.exe -Algorithm SHA256`
+4. Smoke test:
+	- Run `restore-wink-bt.exe --version` (prints version & exits)
+	- Launch normally; test first and second Win+K behavior; tray About / Exit
+	- Restart Explorer (taskkill /IM explorer.exe /F; start explorer) and confirm tray icon auto-reappears.
+5. Publish artifact + hash.
+6. (Optional) Sign binary if code signing is available.
+
+Binary Size & Stripping
+-----------------------
+The executable is already built with size-focused settings (see `.cargo/config.toml`):
+
+- `opt-level = "z"`, `lto = "thin"`, `codegen-units = 1`, `panic = "abort"`
+- Linker flags: `/OPT:REF /OPT:ICF` (dead code & identical COMDAT folding)
+
+Stripping Options:
+
+1. Manual (stable, explicit – recommended for release pipeline transparency):
+   PowerShell:
+   ```powershell
+   cargo build --release
+   # Use llvm-strip (ships with Rust toolchain) – safer than full symbol removal tools.
+   & (Join-Path (Split-Path (Get-Command rustc).Source) "..\lib\rustlib\x86_64-pc-windows-msvc\bin\llvm-strip.exe") `
+	   --strip-debug `
+	   target\x86_64-pc-windows-msvc\release\restore-wink-bt.exe
+   ```
+   (You can also copy `llvm-strip.exe` path into an environment variable for reuse.)
+
+2. Automatic (stable): uncomment `strip = true` in `[profile.release]` inside `.cargo/config.toml`. Rust will invoke the platform tool; explicit control is lost, so manual verification may be harder.
+
+3. Nightly `-Z strip` (historical): superseded by stable `strip = true`; not needed now.
+
+Measuring Size:
+```powershell
+Get-Item target\x86_64-pc-windows-msvc\release\restore-wink-bt.exe | Select-Object Length
+```
+
+Trade-offs:
+- `lto = "fat"` can shave a few more KB at the cost of longer build times.
+- Removing even minimal logging (feature gate) could reduce a few more bytes; current impact is nominal.
+- Code signing will add bytes (signature blob); measure after signing for distribution numbers.
