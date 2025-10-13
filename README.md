@@ -73,7 +73,7 @@ Get-FileHash dist\restore-wink-bt.exe -Algorithm SHA256
 
 Single Instance Behavior
 ------------------------
-A named global mutex `Global\\ShowBluetoothManagerMutex` (legacy name retained for compatibility) prevents multiple copies. Second launches exit silently.
+A named global mutex `Global\\RestoreWinKBluetoothDevicesPanelMutex` prevents multiple copies. Second launches exit silently.
 
 Hotkey Hook Notes
 -----------------

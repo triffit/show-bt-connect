@@ -88,21 +88,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Enforce single instance using a named mutex
+    // Enforce single instance using a named mutex (branding-aligned, no legacy compatibility)
     unsafe {
         use std::ffi::OsStr;
         use std::os::windows::ffi::OsStrExt;
         use winapi::um::synchapi::CreateMutexW;
         use winapi::um::errhandlingapi::GetLastError;
         use winapi::shared::winerror::ERROR_ALREADY_EXISTS;
-
-        let name: Vec<u16> = OsStr::new("Global\\ShowBluetoothManagerMutex")
-            .encode_wide().chain(std::iter::once(0)).collect();
-        let handle = CreateMutexW(std::ptr::null_mut(), 0, name.as_ptr());
-        if handle.is_null() || GetLastError() == ERROR_ALREADY_EXISTS {
-            return Ok(()); // Exit silently (second instance)
+        const MUTEX_NAME: &str = "Global\\RestoreWinKBluetoothDevicesPanelMutex";
+        let w: Vec<u16> = OsStr::new(MUTEX_NAME).encode_wide().chain(std::iter::once(0)).collect();
+        let h = CreateMutexW(std::ptr::null_mut(), 0, w.as_ptr());
+        if h.is_null() || GetLastError() == ERROR_ALREADY_EXISTS {
+            return Ok(());
         }
-        // (Optional) We intentionally never close the mutex handle so it stays valid until process exit.
     }
     
     // Starting Restore Win+K: Bluetooth Devices Panel (single-instance enforced)
@@ -127,7 +125,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exit_id = exit_item.id().0.clone();
     
     // Build tray icon
-    let tooltip = format!("Restore Win+K: Bluetooth Devices Panel v{VERSION} - Click to open Bluetooth devices");
+    let tooltip = format!("Restore Win+K: Bluetooth Devices Panel v{VERSION}");
     let _tray_icon: TrayIcon = TrayIconBuilder::new()
         .with_menu(Box::new(menu))
         .with_tooltip(&tooltip)
