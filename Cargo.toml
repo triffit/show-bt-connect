@@ -3,7 +3,7 @@ name = "show-bt-connect"
 version = "1.1.6"
 edition = "2021"
 authors = ["jopl@Triffit"]
-description = "Show Bluetooth Connection Manager with System Tray"
+description = "Restore Win+K: Bluetooth Devices Panel (first Win+K = Bluetooth devices, second = Cast)"
 license = "MIT"
 
 [dependencies]
@@ -27,7 +27,7 @@ embed-resource = "2.4"
 ico = "0.3"
 
 [[bin]]
-name = "show-bluetooth-manager"
+name = "restore-wink-bt"
 path = "src/main.rs"
 
 [profile.release]

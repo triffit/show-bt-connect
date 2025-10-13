@@ -1,9 +1,13 @@
-Show Bluetooth Manager (Tray)
-=============================
+Restore Win+K: Bluetooth Devices Panel (Tray)
+============================================
 
-Ultra-light Windows tray helper to launch the Bluetooth connect UI instantly.
+Ultra-light Windows tray helper that restores the fast Windows 10 Win+K Bluetooth Devices connect panel (first chord) while preserving Cast on the second chord. (Acronym: WINKBT)
 
-Status: Active minimalist utility. Recent updates added an About dialog, graceful keyboard hook shutdown, refined Win+K second‑press pass‑through for Cast, and removal of legacy config/error modules.
+Status: Active minimalist utility. Recent updates: About dialog, graceful hook shutdown, refined Win+K pass‑through, branding rename.
+
+Branding Update
+---------------
+Formerly “Show Bluetooth Manager”. Renamed to “Restore Win+K: Bluetooth Devices Panel” to emphasize restored behavior: first Win+K → Bluetooth devices panel, second (while holding Win) → Cast. Existing mutex / prior binary name may appear in older releases.
 
 Background / Restored Behavior
 ------------------------------
@@ -29,7 +33,7 @@ What It Does
 
 Key Features
 ------------
-- Single self‑contained executable (`show-bluetooth-manager.exe`)
+- Single self‑contained executable (`restore-wink-bt.exe`)
 - Embedded icon & version metadata (`resources.rc` + build script)
 - Build‑time ICO -> RGBA extraction (no image decoding at runtime)
 - Size optimized (LTO Thin, opt-level=z, stripped): ~280–290 KB
@@ -53,23 +57,23 @@ cargo build --release
 ```
 Artifacts (with explicit target in `.cargo/config.toml`):
 ```
-target/x86_64-pc-windows-msvc/release/show-bluetooth-manager.exe
+target/x86_64-pc-windows-msvc/release/restore-wink-bt.exe
 ```
 
 Distribution
 ------------
-Copy just the EXE (optionally place in a `dist/` folder). Everything required (icon, metadata) is embedded.
+Copy just the EXE (`restore-wink-bt.exe`). Everything required (icon, metadata) is embedded.
 
 Verifying Integrity (PowerShell)
 --------------------------------
 ```
-Get-FileHash dist\show-bluetooth-manager.exe -Algorithm SHA256
+Get-FileHash dist\restore-wink-bt.exe -Algorithm SHA256
 ```
 (Record the hash before publishing.)
 
 Single Instance Behavior
 ------------------------
-A named global mutex `Global\\ShowBluetoothManagerMutex` prevents multiple copies. Second launches exit silently.
+A named global mutex `Global\\ShowBluetoothManagerMutex` (legacy name retained for compatibility) prevents multiple copies. Second launches exit silently.
 
 Hotkey Hook Notes
 -----------------
