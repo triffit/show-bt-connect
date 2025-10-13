@@ -1,0 +1,45 @@
+# ---- Rust / Cargo ----
+/target/
+**/target/
+
+# Keep Cargo.lock for applications (uncomment if you want to commit it)
+# /Cargo.lock
+
+# ---- Build Artifacts & Generated Files ----
+/dist/
+/*.exe
+/*.pdb
+*.dll
+*.lib
+*.ilk
+*.exp
+
+# Build script output (OUT_DIR intermediates) - not directly here but safety
+**/icon_rgba.rs
+
+# ---- IDE / Editor ----
+/.vscode/
+/.idea/
+*.code-workspace
+
+# ---- OS Junk ----
+Thumbs.db
+.DS_Store
+
+# ---- Logs / Temp ----
+*.log
+*.tmp
+~$*
+
+# ---- Crash Dumps ----
+*.dmp
+
+# ---- Additional project-specific ----
+# If you later add signing certificates or keys, ignore them here:
+# *.pfx
+# *.pem
+
+# Keep resource and configuration files
+!resources.rc
+!.cargo/
+!.cargo/config.toml

@@ -1,0 +1,34 @@
+#include <windows.h>
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     1,1,5,0
+PRODUCTVERSION  1,1,5,0
+FILEFLAGSMASK   0x3fL
+FILEFLAGS       0x0L
+FILEOS          VOS__WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "Triffit"
+            VALUE "FileDescription", "Show Bluetooth Connection Manager"
+            VALUE "FileVersion", "1.1.5.0"
+            VALUE "InternalName", "show-bluetooth-manager"
+            VALUE "LegalCopyright", "Copyright (c) 2025, Triffit"
+            VALUE "OriginalFilename", "show-bluetooth-manager.exe"
+            VALUE "ProductName", "Show Bluetooth Manager"
+            VALUE "ProductVersion", "1.1.5.0"
+            VALUE "Authors", "jopl@Triffit"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+// Include the icon
+IDI_ICON1 ICON "app.ico"

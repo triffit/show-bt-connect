@@ -1,0 +1,22 @@
+[build]
+target = "x86_64-pc-windows-msvc"
+
+[profile.release]
+# Optimize for size; 'z' is more aggressive than 's'
+opt-level = "z"
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[unstable]
+# Allow using -Z build-std if desired in future (commented out by default)
+# build-std = ["core","alloc","std"]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = [
+  "-C", "link-arg=/OPT:REF",
+  "-C", "link-arg=/OPT:ICF",
+  "-C", "link-arg=/DEBUG:NONE",
+  "-C", "link-arg=/INCREMENTAL:NO",
+]
