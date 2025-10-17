@@ -5,6 +5,7 @@
 
 #[macro_use]
 mod log; // exports log_dbg! macro
+mod audio_device;
 mod bluetooth;
 mod tray;
 mod keyboard_hook;
@@ -15,6 +16,7 @@ mod wide_strings;
 mod config;
 
 use app_state::AppState;
+use audio_device::{set_default_audio_device, register_device_change_callback};
 use single_instance::{ensure_single_instance_wide, InstanceCheck};
 use winit::event_loop::{ControlFlow, EventLoopBuilder};
 use winit::event::{Event, WindowEvent};
@@ -25,7 +27,7 @@ const VERSION: &str = match option_env!("APP_VERSION") { Some(v) => v, None => "
 use crate::wide_strings::WIDE_MUTEX_NAME;
 
 #[derive(Debug)]
-enum UserEvent { TrayEvent(TrayIconEvent), MenuEvent(MenuEvent), WinKHook, TrayRecreate }
+enum UserEvent { TrayEvent(TrayIconEvent), MenuEvent(MenuEvent), WinKHook, TrayRecreate, RefreshAudioDevices }
 
 use crate::config::AppResult;
 
@@ -68,6 +70,12 @@ fn main() -> AppResult {
     let hook_proxy = event_loop_proxy.clone();
     let _hook_guard = keyboard_hook::install_win_k_hook(move || { let _ = hook_proxy.send_event(UserEvent::WinKHook); })?;
 
+    // Audio device change notifications (event-driven, no polling!)
+    let audio_proxy = event_loop_proxy.clone();
+    let _audio_notification_guard = register_device_change_callback(std::sync::Arc::new(move || {
+        let _ = audio_proxy.send_event(UserEvent::RefreshAudioDevices);
+    }))?;
+
     // Tray + menu handlers
     let proxy_clone = event_loop_proxy.clone();
     TrayIconEvent::set_event_handler(Some(move |event| { let _ = proxy_clone.send_event(UserEvent::TrayEvent(event)); }));
@@ -90,8 +98,33 @@ fn main() -> AppResult {
                     },
                     UserEvent::MenuEvent(menu_event) => {
                         let id = menu_event.id.0.as_str();
-                        if id == about_id.as_str() { show_about_dialog(); }
-                        else if id == exit_id.as_str() { elwt.exit(); }
+                        if id == about_id.as_str() { 
+                            show_about_dialog(); 
+                        }
+                        else if id == exit_id.as_str() { 
+                            elwt.exit(); 
+                        }
+                        else if let Some(device_idx) = tray_manager.audio_device_index(id) {
+                            // User selected an audio device
+                            if let Some(device) = tray_manager.get_audio_device(device_idx) {
+                                log_dbg!("audio: user selected device: {}", device.name);
+                                match set_default_audio_device(&device.id) {
+                                    Ok(()) => {
+                                        log_dbg!("audio: successfully set default device");
+                                        // Recreate tray to update checkmark
+                                        if let Err(_e) = tray_manager.recreate(VERSION) {
+                                            log_dbg!("tray: recreate after device switch failed: {_e}");
+                                        } else {
+                                            about_id = tray_manager.about_id().to_string();
+                                            exit_id = tray_manager.exit_id().to_string();
+                                        }
+                                    }
+                                    Err(_e) => {
+                                        log_dbg!("audio: failed to set default device: {_e}");
+                                    }
+                                }
+                            }
+                        }
                     },
                     UserEvent::WinKHook => { log_dbg!("hook: Win+K intercepted -> toggle"); state.on_win_k(); },
                     UserEvent::TrayRecreate => {
@@ -99,6 +132,15 @@ fn main() -> AppResult {
                         if let Err(_e) = tray_manager.recreate(VERSION) { log_dbg!("tray: recreate failed: {_e}"); }
                         about_id = tray_manager.about_id().to_string();
                         exit_id = tray_manager.exit_id().to_string();
+                    }
+                    UserEvent::RefreshAudioDevices => {
+                        // Audio device change notification (event-driven, triggered only when devices change)
+                        if let Err(_e) = tray_manager.recreate(VERSION) {
+                            log_dbg!("audio: device list refresh failed: {}", _e);
+                        } else {
+                            about_id = tray_manager.about_id().to_string();
+                            exit_id = tray_manager.exit_id().to_string();
+                        }
                     }
                 }
             },

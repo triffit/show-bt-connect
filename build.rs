@@ -27,7 +27,7 @@ fn main() {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("icon_rgba.rs");
     match generate_icon_rs(&dest_path) {
-        Ok(_) => println!("cargo:rerun-if-changed=app.ico"),
+        Ok(()) => println!("cargo:rerun-if-changed=app.ico"),
         Err(e) => {
             eprintln!("cargo:warning=Failed to generate icon from app.ico: {e}");
         }
@@ -49,6 +49,8 @@ fn windows_version_components(pkg_ver: &str) -> (String, String) {
 }
 
 fn generate_icon_rs(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    use std::fmt::Write;
+    
     let bytes = fs::read("app.ico")?;
     let cursor = std::io::Cursor::new(bytes);
     let icon_dir = ico::IconDir::read(cursor)?;
@@ -57,8 +59,8 @@ fn generate_icon_rs(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     for entry in icon_dir.entries() {
         let w = entry.width();
         let h = entry.height();
-        let area = (w as u32) * (h as u32);
-        if largest.map(|(_,_,a)| area > a).unwrap_or(true) {
+        let area = w * h;
+        if largest.is_none_or(|(_, _, a)| area > a) {
             largest = Some((w, h, area));
         }
     }
@@ -69,19 +71,19 @@ fn generate_icon_rs(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         if entry.width() == w && entry.height() == h {
             let img = entry.decode()?; // returns an image buffer (RGBA)
             let pixels = img.rgba_data().to_vec();
-            rgba = Some((pixels, w as u32, h as u32));
+            rgba = Some((pixels, w, h));
             break;
         }
     }
     let (pixels, w, h) = rgba.ok_or("Failed to decode largest icon frame")?;
     let mut out = String::new();
     out.push_str("// Auto-generated from app.ico at build time.\n");
-    out.push_str(&format!("pub const ICON_WIDTH: u32 = {w};\n"));
-    out.push_str(&format!("pub const ICON_HEIGHT: u32 = {h};\n"));
-    out.push_str(&format!("pub static ICON_RGBA: [u8; {}] = [", pixels.len()));
+    writeln!(out, "pub const ICON_WIDTH: u32 = {w};").unwrap();
+    writeln!(out, "pub const ICON_HEIGHT: u32 = {h};").unwrap();
+    write!(out, "pub static ICON_RGBA: [u8; {}] = [", pixels.len()).unwrap();
     for (i, b) in pixels.iter().enumerate() {
         if i % 20 == 0 { out.push('\n'); }
-        out.push_str(&format!("{b},"));
+        write!(out, "{b},").unwrap();
     }
     out.push_str("\n];\n");
     fs::write(path, out)?;

@@ -41,8 +41,19 @@ unsafe extern "system" fn hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -
             VK_LWIN | VK_RWIN => { state.win_down = true; },
             VK_K if state.win_down => {
                 let now = Instant::now();
-                let window_ok = state.first_k_time.map(|t| now.duration_since(t) < Duration::from_millis(PASS_THROUGH_WINDOW_MS)).unwrap_or(false);
-                if !state.swallowed_first || !window_ok {
+                let window_ok = state.first_k_time.is_some_and(|t| now.duration_since(t) < Duration::from_millis(PASS_THROUGH_WINDOW_MS));
+                
+                if !state.swallowed_first {
+                    // First Win+K: swallow and launch Bluetooth panel
+                    state.swallowed_first = true;
+                    state.first_k_time = Some(now);
+                    if let Some(cb) = &state.callback { cb(); }
+                    return 1;
+                } else if window_ok {
+                    // Second Win+K within window: pass through to Windows for native Cast flyout
+                    // Don't return 1, fall through to CallNextHookEx
+                } else {
+                    // Outside window: treat as new first press
                     state.swallowed_first = true;
                     state.first_k_time = Some(now);
                     if let Some(cb) = &state.callback { cb(); }
@@ -51,13 +62,11 @@ unsafe extern "system" fn hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -
             },
             _ => {}
         }
-    } else {
-        if vk == VK_LWIN || vk == VK_RWIN {
-            let mut state = STATE.lock().unwrap();
-            state.win_down = false;
-            state.swallowed_first = false;
-            state.first_k_time = None;
-        }
+    } else if vk == VK_LWIN || vk == VK_RWIN {
+        let mut state = STATE.lock().unwrap();
+        state.win_down = false;
+        state.swallowed_first = false;
+        state.first_k_time = None;
     }
     CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
 }

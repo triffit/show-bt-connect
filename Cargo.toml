@@ -1,6 +1,6 @@
 [package]
 name = "show-bt-connect"
-version = "1.2.6"
+version = "1.3.0"
 edition = "2021"
 authors = ["jopl@Triffit"]
 description = "Restore Win+K: Bluetooth Devices Panel (first Win+K = Bluetooth devices, second = Cast)"
@@ -17,6 +17,15 @@ windows-sys = { version = "0.59", features = [
   "Win32_System_LibraryLoader",
   "Win32_System_Console",
   "Win32_Graphics_Gdi",
+] }
+windows = { version = "0.59", features = [
+  "Win32_Media_Audio",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
+  "Win32_Devices_FunctionDiscovery",
+  "Win32_UI_Shell_PropertiesSystem",
+  "Win32_Devices_Properties",
 ] }
 once_cell = "1.19"
 

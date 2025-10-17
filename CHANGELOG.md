@@ -1,4 +1,29 @@
 # Changelog
+## [1.3.0] - 2025-10-17
+### Added
+- **Audio Device Selection**: New "Audio Devices" submenu in tray context menu for quick switching between audio output devices.
+  - Lists all active audio output devices with visual checkmark indicator for current default device.
+  - Click any device to set it as the default audio output (for Console, Multimedia, and Communications roles).
+  - Event-driven updates using Windows Core Audio `IMMNotificationClient` callbacks (no CPU-wasting polling).
+  - Devices automatically appear/disappear when connected/disconnected (e.g., Bluetooth headphones).
+  - Text alignment with spacing for clean checkmark display.
+
+### Changed
+- Enhanced tray menu with dynamic audio device management.
+- Implemented proper Windows COM vtable for `IMMNotificationClient` (advanced Windows integration).
+- **Win+K behavior refinement**: Second Win+K (while holding Win) now passes through to Windows for native Cast flyout.
+
+### Fixed
+- Win+K Cast access: Second Win+K press (within 1.2s while holding Win key) now correctly passes through to Windows, allowing the native Cast/Project flyout to appear.
+
+### Internal
+- Added Windows Core Audio API integration (`IMMDeviceEnumerator`, `IPolicyConfig`).
+- Manual COM interface implementation for device change notifications.
+- Proper reference counting and COM lifetime management.
+- Extensive clippy lint fixes for idiomatic Rust code.
+- All standard clippy lints pass with zero warnings.
+- Removed debug logging from keyboard hook for clean release builds.
+
 ## [1.2.6] - 2025-10-13
 ### Added
 - Tray icon resilience restored: listens for `TaskbarCreated` and automatically recreates the tray icon.

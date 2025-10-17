@@ -25,6 +25,7 @@ Current Triggers
 - Tray icon left click (opens / re-opens Bluetooth panel heuristic)
 - Win+K low-level keyboard hook (captured via WH_KEYBOARD_LL, original system panel suppressed)
 - About menu item (shows version / credits)
+- **Audio Devices submenu** (quick switching between audio output devices)
 
 What It Does
 ------------
@@ -36,15 +37,21 @@ Key Features
 - Single self‑contained executable (`restore-wink-bt.exe`)
 - Embedded icon & version metadata (`resources.rc` + build script)
 - Build‑time ICO -> RGBA extraction (no image decoding at runtime)
-- Size optimized (LTO Thin, opt-level=z, stripped): ~280–290 KB
+- Size optimized (LTO Thin, opt-level=z, stripped): ~320–330 KB (with audio features)
 - Single-instance enforcement (named mutex; silent exit on second launch)
 - Debounce heuristic to avoid rapid relaunch storms
 - Accurate Win+K emulation: first chord Bluetooth, second chord Cast (pass‑through window ~1.2s)
+- **Audio Device Selection**: Tray menu for quick switching between audio outputs
+  - Event-driven updates (Windows Core Audio `IMMNotificationClient` callbacks)
+  - Automatic detection of connected/disconnected devices (Bluetooth, USB, etc.)
+  - Visual checkmark indicator for current default device
+  - Sets default for all roles (Console, Multimedia, Communications)
 - About dialog (tray menu) with version pulled from build metadata
 - Graceful keyboard hook shutdown (unhook on Exit)
- - RAII keyboard hook guard (auto-unhook on drop – no manual shutdown path needed)
- - Failure-only logging always active; success logging opt-in via `--features verbose-log`
- - `#![deny(warnings)]` enforced for consistently clean builds
+- RAII keyboard hook guard (auto-unhook on drop – no manual shutdown path needed)
+- Failure-only logging always active; success logging opt-in via `--features verbose-log`
+- `#![deny(warnings)]` enforced for consistently clean builds
+- Zero clippy warnings with idiomatic Rust code
 
 Removed / Simplified (Historical)
 ---------------------------------
@@ -72,7 +79,10 @@ Runtime Usage
 1. Launch the exe (console hidden in non-debug builds).
 2. Press Win+K or left-click tray icon to show Bluetooth devices.
 3. Hold Win and press K again quickly for Cast (pass-through).
-4. Right-click tray icon for About / Exit.
+4. Right-click tray icon for:
+   - **Audio Devices**: Select audio output device (checkmark shows current default)
+   - **About**: Version and credits
+   - **Exit**: Quit application
 
 ```
 target/x86_64-pc-windows-msvc/release/restore-wink-bt.exe
