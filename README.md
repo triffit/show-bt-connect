@@ -1,13 +1,9 @@
-Restore Win+K: Bluetooth Devices Panel (Tray)
-============================================
+ShowBTConnect
+=============
 
-Ultra-light Windows tray helper that restores the fast Windows 10 Win+K Bluetooth Devices connect panel (first chord) while preserving Cast on the second chord. (Acronym: WINKBT)
+Ultra-light Windows tray helper that restores the fast Windows 10 Win+K Bluetooth Devices connect panel (first chord) while preserving Cast on the second chord.
 
-Status: Active minimalist utility. Recent updates: About dialog, graceful hook shutdown, refined Win+K pass‑through, branding rename.
-
-Branding Update
----------------
-Formerly “Show Bluetooth Manager”. Renamed to “Restore Win+K: Bluetooth Devices Panel” to emphasize restored behavior: first Win+K → Bluetooth devices panel, second (while holding Win) → Cast. Existing mutex / prior binary name may appear in older releases.
+Status: Active minimalist utility. Current version: 1.4.0. Recent updates: executable rename, UTF-16 module refactor, context menu improvements.
 
 Background / Restored Behavior
 ------------------------------
@@ -34,7 +30,7 @@ What It Does
 
 Key Features
 ------------
-- Single self‑contained executable (`restore-wink-bt.exe`)
+- Single self‑contained executable (`ShowBTConnect.exe`)
 - Embedded icon & version metadata (`resources.rc` + build script)
 - Build‑time ICO -> RGBA extraction (no image decoding at runtime)
 - Size optimized (LTO Thin, opt-level=z, stripped): ~320–330 KB (with audio features)
@@ -66,7 +62,9 @@ Build
 cargo build --release
 ```
 Artifacts (with explicit target in `.cargo/config.toml`):
-Verbose Logging (Release)
+```
+target/x86_64-pc-windows-msvc/release/ShowBTConnect.exe
+```
 ------------------------
 Enable extra diagnostic output (including successful URI launches):
 ```
@@ -84,24 +82,20 @@ Runtime Usage
    - **About**: Version and credits
    - **Exit**: Quit application
 
-```
-target/x86_64-pc-windows-msvc/release/restore-wink-bt.exe
-```
-
 Distribution
 ------------
-Copy just the EXE (`restore-wink-bt.exe`). Everything required (icon, metadata) is embedded.
+Copy just the EXE (`ShowBTConnect.exe`). Everything required (icon, metadata) is embedded.
 
 Verifying Integrity (PowerShell)
 --------------------------------
 ```
-Get-FileHash dist\restore-wink-bt.exe -Algorithm SHA256
+Get-FileHash dist\ShowBTConnect.exe -Algorithm SHA256
 ```
 (Record the hash before publishing.)
 
 Single Instance Behavior
 ------------------------
-A named global mutex `Global\\RestoreWinKBluetoothDevicesPanelMutex` prevents multiple copies. Second launches exit silently.
+A named global mutex `Global\\ShowBTConnectMutex` prevents multiple copies. Second launches exit silently.
 
 Hotkey Hook Notes
 -----------------
@@ -126,10 +120,10 @@ Minimal dependency set: `winit`, `tray-icon`, `windows-sys` (curated Win32 featu
 
 Wide UTF-16 Helpers
 -------------------
-The module `src/wide_strings.rs` provides two tiny helpers:
+The module `src/utf16_strings.rs` provides two tiny helpers:
 
-- `to_wide(s: &str) -> Vec<u16>`: UTF-16 encode without a terminating null.
-- `to_wide_null(s: &str) -> Vec<u16>`: UTF-16 encode and append a trailing `\0` (for most Win32 APIs).
+- `encode_utf16(s: &str) -> Vec<u16>`: UTF-16 encode without a terminating null.
+- `encode_utf16_null(s: &str) -> Vec<u16>`: UTF-16 encode and append a trailing `\0` (for most Win32 APIs).
 
 These replace repeated `OsStr::new(...).encode_wide().chain(once(0))` patterns across mutex creation, window class registration, message box titles, ShellExecuteW calls, etc., improving readability and reducing minor copy/paste risk. No external crate is pulled in for this to keep the binary minimal.
 
@@ -143,10 +137,10 @@ Release Checklist
 2. Set `APP_VERSION` via build script env (or tag) and build release:
 	- `cargo clean && cargo build --release`
 3. Verify size & hash:
-	- Check file size (<300 KB expected)
-	- `Get-FileHash target/x86_64-pc-windows-msvc/release/restore-wink-bt.exe -Algorithm SHA256`
+	- Check file size (<330 KB expected)
+	- `Get-FileHash target/x86_64-pc-windows-msvc/release/ShowBTConnect.exe -Algorithm SHA256`
 4. Smoke test:
-	- Run `restore-wink-bt.exe --version` (prints version & exits)
+	- Run `ShowBTConnect.exe --version` (prints version & exits)
 	- Launch normally; test first and second Win+K behavior; tray About / Exit
 	- Restart Explorer (taskkill /IM explorer.exe /F; start explorer) and confirm tray icon auto-reappears.
 5. Publish artifact + hash.
@@ -168,7 +162,7 @@ Stripping Options:
    # Use llvm-strip (ships with Rust toolchain) – safer than full symbol removal tools.
    & (Join-Path (Split-Path (Get-Command rustc).Source) "..\lib\rustlib\x86_64-pc-windows-msvc\bin\llvm-strip.exe") `
 	   --strip-debug `
-	   target\x86_64-pc-windows-msvc\release\restore-wink-bt.exe
+	   target\x86_64-pc-windows-msvc\release\ShowBTConnect.exe
    ```
    (You can also copy `llvm-strip.exe` path into an environment variable for reuse.)
 
@@ -178,7 +172,7 @@ Stripping Options:
 
 Measuring Size:
 ```powershell
-Get-Item target\x86_64-pc-windows-msvc\release\restore-wink-bt.exe | Select-Object Length
+Get-Item target\x86_64-pc-windows-msvc\release\ShowBTConnect.exe | Select-Object Length
 ```
 
 Trade-offs:

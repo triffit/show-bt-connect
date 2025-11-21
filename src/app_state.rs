@@ -72,4 +72,7 @@ impl AppState {
 
     pub fn on_tray_left_click(&mut self) { self.toggle_bluetooth_ui_internal(); }
     pub fn on_win_k(&mut self) { self.toggle_bluetooth_ui_internal(); }
+    
+    pub fn is_panel_thought_open(&self) -> bool { self.last_user_thought_open }
+    pub fn mark_panel_closed(&mut self) { self.last_user_thought_open = false; }
 }

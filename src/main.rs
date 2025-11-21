@@ -11,8 +11,7 @@ mod tray;
 mod keyboard_hook;
 mod app_state;
 mod single_instance;
-mod taskbar_restart;
-mod wide_strings;
+mod utf16_strings;
 mod config;
 
 use app_state::AppState;
@@ -24,10 +23,10 @@ use tray_icon::{TrayIconEvent, menu::{MenuEvent}};
 
 // Version injected by build.rs (fallback to placeholder if missing)
 const VERSION: &str = match option_env!("APP_VERSION") { Some(v) => v, None => "0.0.0" };
-use crate::wide_strings::WIDE_MUTEX_NAME;
+use crate::utf16_strings::UTF16_MUTEX_NAME;
 
 #[derive(Debug)]
-enum UserEvent { TrayEvent(TrayIconEvent), MenuEvent(MenuEvent), WinKHook, TrayRecreate, RefreshAudioDevices }
+enum UserEvent { TrayEvent(TrayIconEvent), MenuEvent(MenuEvent), WinKHook, RefreshAudioDevices }
 
 use crate::config::AppResult;
 
@@ -35,14 +34,14 @@ fn main() -> AppResult {
     // Early CLI flags (before windows_subsystem hides console in release)
     for arg in std::env::args().skip(1) {
         match arg.as_str() {
-            "--version" | "-V" => { println!("restore-wink-bt {VERSION}"); return Ok(()); },
+            "--version" | "-V" => { println!("ShowBTConnect {VERSION}"); return Ok(()); },
             _ => {}
         }
     }
     hide_console_window();
 
     // Single instance
-    match ensure_single_instance_wide(WIDE_MUTEX_NAME) {
+    match ensure_single_instance_wide(UTF16_MUTEX_NAME) {
         InstanceCheck::First => {},
         InstanceCheck::AlreadyRunning => return Ok(()),
         InstanceCheck::Failed(_code) => {
@@ -57,14 +56,9 @@ fn main() -> AppResult {
     let mut state = AppState::new();
 
     // Tray & menu (reusable builder)
-    let mut tray_manager = tray::TrayManager::new(VERSION)?;
+    let mut tray_manager = tray::TrayManager::new()?;
     let mut about_id = tray_manager.about_id().to_string();
     let mut exit_id = tray_manager.exit_id().to_string();
-
-    // Taskbar restart watcher: recreate tray icon when Explorer restarts.
-    // Taskbar restart watcher: recreate tray after Explorer restarts
-    let recreate_proxy = event_loop_proxy.clone();
-    let _taskbar_watcher = taskbar_restart::start(move || { let _ = recreate_proxy.send_event(UserEvent::TrayRecreate); })?;
 
     // Keyboard hook -> user event
     let hook_proxy = event_loop_proxy.clone();
@@ -91,9 +85,21 @@ fn main() -> AppResult {
             Event::UserEvent(user_event) => {
                 match user_event {
                     UserEvent::TrayEvent(tray_event) => {
-                        if let TrayIconEvent::Click { button: tray_icon::MouseButton::Left, .. } = tray_event {
-                            log_dbg!("tray: left click -> toggle");
-                            state.on_tray_left_click();
+                        match tray_event {
+                            TrayIconEvent::Click { button: tray_icon::MouseButton::Left, .. } => {
+                                log_dbg!("tray: left click -> toggle");
+                                state.on_tray_left_click();
+                            }
+                            TrayIconEvent::Click { button: tray_icon::MouseButton::Right, .. } => {
+                                log_dbg!("tray: right click -> force close BT panel if open");
+                                // Force close by calling show again if we think it's open
+                                if state.is_panel_thought_open() {
+                                    bluetooth::show_bluetooth_ui();
+                                    state.mark_panel_closed();
+                                    std::thread::sleep(std::time::Duration::from_millis(100));
+                                }
+                            }
+                            _ => {}
                         }
                     },
                     UserEvent::MenuEvent(menu_event) => {
@@ -112,7 +118,7 @@ fn main() -> AppResult {
                                     Ok(()) => {
                                         log_dbg!("audio: successfully set default device");
                                         // Recreate tray to update checkmark
-                                        if let Err(_e) = tray_manager.recreate(VERSION) {
+                                        if let Err(_e) = tray_manager.recreate() {
                                             log_dbg!("tray: recreate after device switch failed: {_e}");
                                         } else {
                                             about_id = tray_manager.about_id().to_string();
@@ -127,15 +133,9 @@ fn main() -> AppResult {
                         }
                     },
                     UserEvent::WinKHook => { log_dbg!("hook: Win+K intercepted -> toggle"); state.on_win_k(); },
-                    UserEvent::TrayRecreate => {
-                        log_dbg!("taskbar: restart detected -> recreating tray icon");
-                        if let Err(_e) = tray_manager.recreate(VERSION) { log_dbg!("tray: recreate failed: {_e}"); }
-                        about_id = tray_manager.about_id().to_string();
-                        exit_id = tray_manager.exit_id().to_string();
-                    }
                     UserEvent::RefreshAudioDevices => {
                         // Audio device change notification (event-driven, triggered only when devices change)
-                        if let Err(_e) = tray_manager.recreate(VERSION) {
+                        if let Err(_e) = tray_manager.recreate() {
                             log_dbg!("audio: device list refresh failed: {}", _e);
                         } else {
                             about_id = tray_manager.about_id().to_string();
@@ -160,12 +160,41 @@ fn hide_console_window() {
 
 fn show_about_dialog() {
     use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_OK, MB_ICONINFORMATION};
-    use crate::wide_strings::{to_wide_null, WIDE_ABOUT};
-    let text = format!("Restore Win+K: Bluetooth Devices Panel\nVersion {VERSION}\nRestores the fast Win+K Bluetooth devices panel (first press) without losing Cast (second press).\n© 2025 Triffit");
-    // NOTE: If About is opened frequently and VERSION is static during process lifetime, we could
-    // cache this wide buffer in a Lazy<Vec<u16>> or const (with compile-time version) to avoid
-    // allocation here. Kept dynamic to reflect runtime-injected VERSION without extra storage.
-    let wide = to_wide_null(&text);
-    let title_wide = WIDE_ABOUT;
-    unsafe { MessageBoxW(std::ptr::null_mut(), wide.as_ptr(), title_wide.as_ptr(), MB_OK | MB_ICONINFORMATION); }
+    use windows_sys::Win32::Foundation::HWND;
+    use crate::utf16_strings::{encode_utf16_null, UTF16_ABOUT};
+    
+    // Load the application icon from embedded resources
+    let icon_handle = unsafe {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{LoadImageW, IMAGE_ICON, LR_DEFAULTSIZE};
+        use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+        
+        let hinst = GetModuleHandleW(std::ptr::null());
+        LoadImageW(hinst, 1 as *const u16, IMAGE_ICON, 0, 0, LR_DEFAULTSIZE)
+    };
+    
+    let text = format!("ShowBTConnect: Show Bluetooth Devices Panel\nRestores the fast Win+K Bluetooth devices panel.\n\nVersion {VERSION}, © 2025, Triffit");
+    let wide = encode_utf16_null(&text);
+    let title_wide = UTF16_ABOUT;
+    
+    // Create a message box with custom icon
+    if !icon_handle.is_null() {
+        // Use MSGBOXPARAMS for custom icon
+        use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxIndirectW, MSGBOXPARAMSW};
+        let mut params = MSGBOXPARAMSW {
+            cbSize: std::mem::size_of::<MSGBOXPARAMSW>() as u32,
+            hwndOwner: std::ptr::null_mut() as HWND,
+            hInstance: unsafe { windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null()) },
+            lpszText: wide.as_ptr(),
+            lpszCaption: title_wide.as_ptr(),
+            dwStyle: MB_OK | 0x00000050, // MB_USERICON
+            lpszIcon: icon_handle as *const u16,
+            dwContextHelpId: 0,
+            lpfnMsgBoxCallback: None,
+            dwLanguageId: 0,
+        };
+        unsafe { MessageBoxIndirectW(&mut params) };
+    } else {
+        // Fallback to standard icon
+        unsafe { MessageBoxW(std::ptr::null_mut(), wide.as_ptr(), title_wide.as_ptr(), MB_OK | MB_ICONINFORMATION); }
+    }
 }

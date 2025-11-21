@@ -18,6 +18,9 @@ use std::time::{Instant, Duration};
 use crate::config::PASS_THROUGH_WINDOW_MS;
 use std::thread::JoinHandle;
 
+// Virtual key codes for Win+K combination
+const VK_K: i32 = 0x4B;
+
 static HOOK_SET: AtomicBool = AtomicBool::new(false);
 static HOOK_THREAD_ID: AtomicU32 = AtomicU32::new(0);
 static STATE: Lazy<Mutex<HookState>> = Lazy::new(|| Mutex::new(HookState::default()));
@@ -70,8 +73,6 @@ unsafe extern "system" fn hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -
     }
     CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
 }
-
-const VK_K: i32 = 0x4B; // Virtual key code for 'K'
 
 pub struct HookGuard(Option<JoinHandle<()>>);
 

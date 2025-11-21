@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Triffit
+
 //! Single instance enforcement via named mutex.
 use windows_sys::Win32::Foundation::{GetLastError, ERROR_ALREADY_EXISTS, HANDLE};
 use std::ffi::c_void;
 
-// SAFETY: Declared manually because the minimal windows-sys feature set used does not expose
-// CreateMutexW; signature matches Win32 API. Only called with null security attributes and
-// immutable name pointer derived from a Rust UTF-16 buffer that lives for call duration.
+// SAFETY: CreateMutexW manually declared for minimal binary size (avoiding additional windows-sys features).
+// This is a valid approach for size-optimized binaries. Signature matches Win32 API exactly.
+// Only called with null security attributes and immutable name pointer from UTF-16 buffer.
 extern "system" { fn CreateMutexW(lpMutexAttributes: *mut c_void, bInitialOwner: i32, lpName: *const u16) -> HANDLE; }
 
 pub enum InstanceCheck {

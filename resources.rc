@@ -18,12 +18,12 @@ BEGIN
         BLOCK "040904B0"
         BEGIN
             VALUE "CompanyName", "Triffit"
-            VALUE "FileDescription", "Restore Win+K: Bluetooth Devices Panel"
+            VALUE "FileDescription", "Show Bluetooth Devices Panel"
             VALUE "FileVersion", "{{FILE_VERSION_DOTS}}"
             VALUE "InternalName", "restore-wink-bt"
             VALUE "LegalCopyright", "Copyright (c) 2025, Triffit"
             VALUE "OriginalFilename", "restore-wink-bt.exe"
-            VALUE "ProductName", "Restore Win+K: Bluetooth Devices Panel"
+            VALUE "ProductName", "Show Bluetooth Devices Panel"
             VALUE "ProductVersion", "{{FILE_VERSION_DOTS}}"
             VALUE "Authors", "jopl@Triffit"
         END

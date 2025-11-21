@@ -24,7 +24,7 @@ include!(concat!(env!("OUT_DIR"), "/icon_rgba.rs"));
 
 pub fn load_icon() -> AppResult<Icon> { Ok(Icon::from_rgba(ICON_RGBA.to_vec(), ICON_WIDTH, ICON_HEIGHT)?) }
 
-pub fn build_tray(version: &str) -> AppResult<(TrayIcon, TrayHandles)> {
+pub fn build_tray() -> AppResult<(TrayIcon, TrayHandles)> {
     let icon = load_icon()?;
     let menu = Menu::new();
     
@@ -34,63 +34,50 @@ pub fn build_tray(version: &str) -> AppResult<(TrayIcon, TrayHandles)> {
         Vec::new()
     });
 
-    // Build audio device submenu if devices found
-    if audio_devices.is_empty() {
-        let about_item = MenuItem::new("About", true, None);
-        let exit_item = MenuItem::new("Exit", true, None);
-        menu.append(&about_item)?; 
-        menu.append(&exit_item)?;
-        
-        let about_id = about_item.id().0.clone();
-        let exit_id = exit_item.id().0.clone();
-        let tooltip = format!("Restore Win+K: Bluetooth Devices Panel v{version}");
-        let tray_icon: TrayIcon = TrayIconBuilder::new()
-            .with_menu(Box::new(menu))
-            .with_tooltip(&tooltip)
-            .with_icon(icon)
-            .build()?;
-        log_dbg!("tray: icon created/recreated with 0 audio devices");
-        Ok((tray_icon, TrayHandles { about_id, exit_id, audio_devices: Vec::new(), audio_device_ids: Vec::new() }))
-    } else {
+    let audio_device_ids = if !audio_devices.is_empty() {
         let audio_submenu = Submenu::new("Audio Devices", true);
-        let mut audio_device_ids = Vec::new();
+        let mut ids = Vec::new();
         
         for device in &audio_devices {
             let label = if device.is_default {
                 format!("✓ {}", device.name)
             } else {
-                // Add spacing to align text with checked items
                 format!("    {}", device.name)
             };
             let device_item = MenuItem::new(label, true, None);
-            audio_device_ids.push(device_item.id().0.clone());
+            ids.push(device_item.id().0.clone());
             audio_submenu.append(&device_item)?;
         }
         
         menu.append(&audio_submenu)?;
         menu.append(&PredefinedMenuItem::separator())?;
-        
-        let about_item = MenuItem::new("About", true, None);
-        let exit_item = MenuItem::new("Exit", true, None);
-        menu.append(&about_item)?; 
-        menu.append(&exit_item)?;
-        
-        let about_id = about_item.id().0.clone();
-        let exit_id = exit_item.id().0.clone();
-        let tooltip = format!("Restore Win+K: Bluetooth Devices Panel v{version}");
-        let tray_icon: TrayIcon = TrayIconBuilder::new()
-            .with_menu(Box::new(menu))
-            .with_tooltip(&tooltip)
-            .with_icon(icon)
-            .build()?;
-        log_dbg!("tray: icon created/recreated with {} audio devices", audio_devices.len());
-        Ok((tray_icon, TrayHandles { about_id, exit_id, audio_devices, audio_device_ids }))
-    }
+        ids
+    } else {
+        Vec::new()
+    };
+    
+    let about_item = MenuItem::new("About", true, None);
+    let exit_item = MenuItem::new("Exit", true, None);
+    menu.append(&about_item)?; 
+    menu.append(&exit_item)?;
+    
+    let about_id = about_item.id().0.clone();
+    let exit_id = exit_item.id().0.clone();
+    
+    let tray_icon = TrayIconBuilder::new()
+        .with_menu(Box::new(menu))
+        .with_tooltip("Show Bluetooth Devices Panel")
+        .with_icon(icon)
+        .build()?;
+    
+    log_dbg!("tray: icon created with {} audio device(s)", audio_devices.len());
+    
+    Ok((tray_icon, TrayHandles { about_id, exit_id, audio_devices, audio_device_ids }))
 }
 
 impl TrayManager {
-    pub fn new(version: &str) -> AppResult<Self> {
-        let (icon, handles) = build_tray(version)?;
+    pub fn new() -> AppResult<Self> {
+        let (icon, handles) = build_tray()?;
         Ok(Self { icon, handles })
     }
     pub fn about_id(&self) -> &str { &self.handles.about_id }
@@ -106,8 +93,8 @@ impl TrayManager {
         self.handles.audio_device_ids.iter().position(|id| id == menu_id)
     }
     
-    pub fn recreate(&mut self, version: &str) -> AppResult {
-        let (icon, handles) = build_tray(version)?;
+    pub fn recreate(&mut self) -> AppResult {
+        let (icon, handles) = build_tray()?;
         self.icon = icon; // old icon dropped here
         self.handles = handles;
         Ok(())

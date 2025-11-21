@@ -1,4 +1,17 @@
 # Changelog
+## [1.4.0] - 2025-11-21
+### Changed
+- Renamed executable from `restore-wink-bt.exe` to `ShowBTConnect.exe` for better clarity.
+- Renamed module `wide_strings` to `utf16_strings` with functions `encode_utf16()` and `encode_utf16_null()` for standard naming.
+- Context menu now automatically closes Bluetooth panel if open before displaying (prevents menu appearing behind taskbar).
+
+### Fixed
+- Removed duplicate tray icon issue when Explorer restarts (now relies on tray-icon library's built-in handling).
+
+### Removed
+- Removed custom taskbar restart handling (redundant with tray-icon 0.14+ built-in support).
+- Removed `RELEASE_NOTES` and `RELEASE_SUMMARY` files (information available in README and CHANGELOG).
+
 ## [1.3.0] - 2025-10-17
 ### Added
 - **Audio Device Selection**: New "Audio Devices" submenu in tray context menu for quick switching between audio output devices.

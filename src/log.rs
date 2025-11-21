@@ -3,7 +3,7 @@
 // Usage: log_dbg!("message {}", value);
 #[cfg(any(debug_assertions, feature = "verbose-log"))]
 #[macro_export]
-macro_rules! log_dbg { ($($t:tt)*) => { eprintln!("[restore-wink-bt] {}", format!($($t)*)); }; }
+macro_rules! log_dbg { ($($t:tt)*) => { eprintln!("[ShowBTConnect] {}", format!($($t)*)); }; }
 #[cfg(not(any(debug_assertions, feature = "verbose-log")))]
 #[macro_export]
 macro_rules! log_dbg { ($($t:tt)*) => {}; }

@@ -4,7 +4,7 @@ use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOW;
 use std::ptr;
 use crate::log_dbg;
-use crate::wide_strings::{to_wide_null, WIDE_OPEN};
+use crate::utf16_strings::{encode_utf16_null, UTF16_OPEN};
 
 pub fn show_bluetooth_ui() -> bool {
     // Primary: Action Center flyout (closest to legacy Win+K behavior)
@@ -15,8 +15,8 @@ pub fn show_bluetooth_ui() -> bool {
 }
 
 fn launch_uri(uri: &str) -> bool {
-    let operation = WIDE_OPEN;
-    let file = to_wide_null(uri);
+    let operation = UTF16_OPEN;
+    let file = encode_utf16_null(uri);
     let code = unsafe {
         ShellExecuteW(
             std::ptr::null_mut(),
@@ -29,11 +29,11 @@ fn launch_uri(uri: &str) -> bool {
     };
     if code > 32 {
         #[cfg(any(debug_assertions, feature = "verbose-log"))]
-    log_dbg!("bluetooth: uri launch ok ({} code={})", uri, code);
+        log_dbg!("bluetooth: uri launch ok ({} code={})", uri, code);
         true
     } else {
         // Always log failures even in release minimal mode for troubleshooting.
-    log_dbg!("bluetooth: uri launch failed ({} code={})", uri, code);
+        log_dbg!("bluetooth: uri launch failed ({} code={})", uri, code);
         false
     }
 }

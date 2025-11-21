@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: MIT// (deprecated) Former config/autostart logic removed. Safe to delete.
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Triffit
 
-//! Centralized constants and common result alias.// Keeping stub only because automated deletion failed in this environment.
+//! Centralized constants and common result type alias.
 
-use std::time::Duration;// No code references this module; removing it from version control is recommended.
+use std::time::Duration;
 
-
-#[allow(dead_code)]
 pub type AppResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 // Timing windows

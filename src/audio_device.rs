@@ -65,7 +65,9 @@ pub fn enumerate_audio_devices() -> AppResult<Vec<AudioDevice>> {
         for i in 0..count {
             match get_device_info(&collection, i, default_id.as_ref()) {
                 Ok(device) => devices.push(device),
-                Err(_e) => { log_dbg!("audio: failed to get device {i}: {_e}"); }
+                Err(_e) => { 
+                    log_dbg!("audio: failed to get device {i}: {:?}", _e);
+                }
             }
         }
 
@@ -91,15 +93,18 @@ unsafe fn get_device_info(
 
 /// Get device ID string.
 unsafe fn get_device_id(device: &IMMDevice) -> AppResult<String> {
-    let id_pwstr = device.GetId()?;
-    let id = id_pwstr.to_string()?;
+    let id_pwstr = device.GetId()
+        .map_err(|e| format!("Failed to get device ID: {:?}", e))?;
+    let id = id_pwstr.to_string()
+        .map_err(|e| format!("Failed to convert device ID to string: {:?}", e))?;
     CoTaskMemFree(Some(id_pwstr.as_ptr() as _));
     Ok(id)
 }
 
 /// Get friendly device name.
 unsafe fn get_device_name(device: &IMMDevice, index: u32) -> AppResult<String> {
-    let props = device.OpenPropertyStore(STGM_READ)?;
+    let props = device.OpenPropertyStore(STGM_READ)
+        .map_err(|e| format!("Failed to open property store for device {}: {:?}", index, e))?;
     
     // GetValue takes one argument - a REFPROPERTYKEY (a reference to PROPERTYKEY)
     let name_var = props.GetValue(std::ptr::from_ref(&PKEY_Device_FriendlyName).cast())?;
@@ -139,12 +144,17 @@ pub fn set_default_audio_device(device_id: &str) -> AppResult<()> {
             &CLSID_POLICY_CONFIG,
             None,
             CLSCTX_ALL,
-        )?;
+        ).map_err(|e| format!("Failed to create PolicyConfig COM instance: {:?}", e))?;
 
         let device_id_hstring = HSTRING::from(device_id);
-        policy_config.SetDefaultEndpoint(&device_id_hstring, eConsole)?;
-        policy_config.SetDefaultEndpoint(&device_id_hstring, eMultimedia)?;
-        policy_config.SetDefaultEndpoint(&device_id_hstring, eCommunications)?;
+        policy_config.SetDefaultEndpoint(&device_id_hstring, eConsole)
+            .map_err(|e| format!("Failed to set console endpoint: {:?}", e))?;
+        policy_config.SetDefaultEndpoint(&device_id_hstring, eMultimedia)
+            .map_err(|e| format!("Failed to set multimedia endpoint: {:?}", e))?;
+        policy_config.SetDefaultEndpoint(&device_id_hstring, eCommunications)
+            .map_err(|e| format!("Failed to set communications endpoint: {:?}", e))?;
+
+        log_dbg!("audio: set default device to {device_id}");
 
         log_dbg!("audio: set default device to {device_id}");
         Ok(())
@@ -410,10 +420,13 @@ pub fn register_device_change_callback(callback: DeviceChangeCallback) -> AppRes
             &MMDeviceEnumerator,
             None,
             CLSCTX_ALL,
-        )?;
+        ).map_err(|e| format!("Failed to create device enumerator: {:?}", e))?;
 
         let client = DeviceNotificationClient::create(callback);
-        enumerator.RegisterEndpointNotificationCallback(&client)?;
+        enumerator.RegisterEndpointNotificationCallback(&client)
+            .map_err(|e| format!("Failed to register notification callback: {:?}", e))?;
+        
+        log_dbg!("audio: registered device change notification callback");
         
         log_dbg!("audio: registered device change notification callback");
         
